@@ -1,0 +1,83 @@
+---
+format:
+  typst:
+    papersize: a0
+    margin:
+      x: 10cm
+      y: 10cm
+    mainfont: "Arial"
+    fontsize: 32pt
+---
+
+```{=typst}
+#set text(font: "Arial", size: 32pt)
+
+#show heading.where(level: 1): it => block(
+  text(font: "Arial", size: 96pt, weight: "bold", it.body),
+  below: 12pt
+)
+
+#show heading.where(level: 2): it => block(
+  text(font: "Arial", size: 44pt, weight: "regular", it.body),
+  below: 24pt
+)
+
+#show heading.where(level: 3): it => block(
+  text(font: "Arial", size: 40pt, weight: "bold", it.body),
+  below: 40pt
+)
+
+#show figure.caption: it => text(font: "Arial", size: 32pt, it)
+```
+
+# _tximeta_ support for mixed reference sets
+
+## Michael I. Love^1^, Charlotte Soneson^2^
+
+^1^Department of Genetics, UNC-Chapel Hill, Chapel Hill, NC, US \
+^2^Computational Biology Platform, Friedrich Miescher Institute for Biomedical Research, Basel, Switzerland
+
+---
+
+```{=typst}
+#columns(3, gutter: 1.5cm)[
+```
+
+### Introduction
+
+Lorem ipsum body text here. This will flow in the first column
+at 32pt as set globally above.
+
+### Methods
+
+More body text in the methods section. You can include R code
+output, figures, and tables here as normal.
+
+figure...
+
+### Results
+
+Results text here. Figures placed inside the columns block will
+be constrained to the column width automatically.
+
+figure...
+
+### Discussion
+
+Discussion text spanning into the third column. Keep adding
+content and Typst will flow it across columns automatically.
+
+### Conclusions
+
+- Bullet one
+- Bullet two
+- Bullet three
+
+### References
+
+::: {#refs}
+:::
+
+```{=typst}
+]
+```
