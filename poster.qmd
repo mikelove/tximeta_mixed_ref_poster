@@ -6,11 +6,11 @@ format:
       x: 10cm
       y: 10cm
     mainfont: "Arial"
-    fontsize: 32pt
+    fontsize: 24pt
 ---
 
 ```{=typst}
-#set text(font: "Arial", size: 32pt)
+#set text(font: "Arial", size: 24pt)
 
 #show heading.where(level: 1): it => block(
   text(font: "Arial", size: 96pt, weight: "bold", it.body),
@@ -27,7 +27,7 @@ format:
   below: 40pt
 )
 
-#show figure.caption: it => text(font: "Arial", size: 32pt, it)
+#show figure.caption: it => text(font: "Arial", size: 24pt, it)
 ```
 
 # _tximeta_ support for mixed reference sets
@@ -40,38 +40,142 @@ format:
 ---
 
 ```{=typst}
-#columns(3, gutter: 1.5cm)[
+#columns(2, gutter: 1.5cm)[
 ```
 
-### Introduction
+## Introduction
 
-Lorem ipsum body text here. This will flow in the first column
-at 32pt as set globally above.
+RNA-seq quantification tools such as salmon and oarfish operate against
+an index built from reference transcript sequences. A key feature of
+tximeta is that it records a SHA-256 digest of those sequences at
+index-build time, and uses that digest at import time to automatically
+identify the provenance of the reference and attach the appropriate
+transcript and genome metadata to the resulting `SummarizedExperiment`.
+This eliminates the need for users to manually track which annotation
+release was used and reconstruct the matching `TxDb` or GTF.
 
-### Methods
+Long-read quantifiers such as oarfish extend this model to
+*mixed-reference* indexing: a single index may combine a set of
+*annotated* transcripts (e.g. from GENCODE or Ensembl) with a set of
+*novel* transcripts (e.g. de novo assembled or fusion sequences not
+present in the reference annotation). tximeta v1.28 introduced
+`importData()`, `inspectDigests()`, and `updateMetadata()` to handle
+this case, checking each sub-index digest independently and populating
+transcript metadata wherever a match is found.
 
-More body text in the methods section. You can include R code
-output, figures, and tables here as normal.
+## Setup
 
-figure...
+Three replicates from the SGNEx H9 cell line, quantified with oarfish
+against a mixed reference: GENCODE v48 annotated transcripts plus a set
+of novel transcripts.
 
-### Results
+```{r}
+#| message: false
+library(tximeta)
+library(SummarizedExperiment)
 
-Results text here. Figures placed inside the columns block will
-be constrained to the column width automatically.
+dir <- system.file("extdata/oarfish", package = "tximportData")
+names <- paste0("rep", 2:4)
+files <- file.path(dir, paste0("sgnex_h9_", names, ".quant.gz"))
+coldata <- data.frame(files, names)
+```
 
-figure...
+## Import
 
-### Discussion
+`importData()` reads the counts and stores the index digests in metadata,
+returning an un-ranged `SummarizedExperiment`.
 
-Discussion text spanning into the third column. Keep adding
-content and Typst will flow it across columns automatically.
+```{r}
+se <- importData(coldata, type = "oarfish")
+se
+```
 
-### Conclusions
+## Inspect digests
 
-- Bullet one
-- Bullet two
-- Bullet three
+`inspectDigests()` checks each index digest against tximeta's registries.
+The annotated index matches GENCODE v48 in the pre-computed hash table;
+the novel index has no match yet.
+
+```{r}
+inspectDigests(se)
+```
+
+## Update metadata
+
+`updateMetadata()` populates `rowData` for any transcripts whose index
+has a known match. Here the annotated GENCODE v48 transcripts receive
+`tx_name`, `gene_id`, and other columns; the novel transcripts are left
+with `NA` metadata and `index = "novel"`.
+
+```{r}
+#| eval: false
+se_updated <- updateMetadata(se)
+mcols(se_updated)
+```
+
+To also attach genomic ranges (requires downloading the GENCODE v48 GTF):
+
+```{r}
+#| eval: false
+se_ranges <- updateMetadata(se, ranges = TRUE)
+se_ranges
+```
+
+## Supplying novel transcript metadata
+
+Novel transcript ranges can be provided directly via `txpData`, without
+needing to register them persistently.
+
+```{r}
+library(GenomicRanges)
+
+novel <- data.frame(
+  seqnames = paste0("chr", rep(1:22, each = 500)),
+  start    = 1e6 + 1 + 0:499 * 1000,
+  end      = 1e6 + 1 + 0:499 * 1000 + 1000 - 1,
+  strand   = "+",
+  tx_name  = paste0("novel", 1:(22 * 500)),
+  gene_id  = paste0("novel_gene", rep(1:(22 * 10), each = 50)),
+  type     = "protein_coding"
+)
+novel_gr <- as(novel, "GRanges")
+names(novel_gr) <- novel$tx_name
+```
+
+```{r}
+#| eval: false
+se_full <- updateMetadata(se, txpData = novel_gr, ranges = TRUE)
+mcols(se_full)
+table(mcols(se_full)$index)
+```
+
+## Next steps
+
+**Backporting to salmon.** The mixed-reference digest workflow currently
+targets oarfish, which natively records separate digests for each
+sub-index in its metadata JSON. Salmon does not yet emit per-sub-index
+digests, so the `importData()` / `inspectDigests()` / `updateMetadata()`
+pipeline is not yet available to salmon users who combine annotated and
+novel sequences in a single index. Extending support will require either
+a change to salmon's metadata output, or a preprocessing step that
+records the sub-index digests separately before indexing.
+
+**Quantification over subsets of the annotated transcript set.** A
+common use case is to quantify against a subset of the annotated
+reference — for example, transcripts on the primary assembly only, or a
+biotype-filtered set. Digest-based provenance breaks down here because
+the subset has a different hash from any entry in the pre-computed table,
+so tximeta cannot identify it automatically.
+
+A natural solution is a high-level framework that provides uniform,
+simple interfaces across salmon and oarfish. Such a framework could
+manage subsetting of the annotated reference prior to indexing: it would
+compute and store the SHA-256 digest of the subset FASTA in a standard
+location, then propagate that digest into the tool's index metadata and
+quantification output files during the indexing and quantification steps.
+tximeta would then be able to look up that digest in a locally maintained
+registry, recovering full provenance without any manual linking step by
+the user.
 
 ### References
 
