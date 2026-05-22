@@ -6,11 +6,11 @@ format:
       x: 10cm
       y: 10cm
     mainfont: "Arial"
-    fontsize: 24pt
+    fontsize: 20pt
 ---
 
 ```{=typst}
-#set text(font: "Arial", size: 24pt)
+#set text(font: "Arial", size: 20pt)
 
 #show heading.where(level: 1): it => block(
   text(font: "Arial", size: 96pt, weight: "bold", it.body),
@@ -45,29 +45,55 @@ format:
 
 ## Introduction
 
-RNA-seq quantification tools such as salmon and oarfish operate against
+RNA-seq quantification tools such as _salmon_ and _oarfish_ operate against
 an index built from reference transcript sequences. A key feature of
-tximeta is that it records a SHA-256 digest of those sequences at
-index-build time, and uses that digest at import time to automatically
-identify the provenance of the reference and attach the appropriate
-transcript and genome metadata to the resulting `SummarizedExperiment`.
-This eliminates the need for users to manually track which annotation
-release was used and reconstruct the matching `TxDb` or GTF.
+these tools is that they record a digest of those sequences at
+index-build time. _tximeta_ reads that digest at import time to automatically
+identify the provenance of the reference. It then attaches the appropriate
+transcript and genome metadata to the resulting `SummarizedExperiment`,
+in the `rowData` and `rowRanges`.
+This workflow eliminates the need for users to manually track which annotation
+release was used, and to manually reconstruct the matching `TxDb`.
+This model for attaching data provenance 
+works regardless of the specific steps or actions taken 
+by the initial analyst performing quantification; 
+no extra steps are required.
 
-Long-read quantifiers such as oarfish extend this model to
-*mixed-reference* indexing: a single index may combine a set of
+The long-read quantifier _oarfish_ and _tximeta_ recently 
+extend this model to
+*mixed reference* indexing: a single index may combine a set of
 *annotated* transcripts (e.g. from GENCODE or Ensembl) with a set of
 *novel* transcripts (e.g. de novo assembled or fusion sequences not
-present in the reference annotation). tximeta v1.28 introduced
-`importData()`, `inspectDigests()`, and `updateMetadata()` to handle
-this case, checking each sub-index digest independently and populating
-transcript metadata wherever a match is found.
+present in the reference annotation). _tximeta_ v1.28 introduced the 
+following functions:
+
+  - `importData()`
+  - `inspectDigests()`
+  - `updateMetadata()`
+  - `linkedTxpData()`
+
+These allow the user to check each sub-index digest independently ,
+add linked metadata, and populate transcript metadata wherever 
+a match is found.
+`linkedTxpData()` allows simple tabular metadata on transcripts 
+to be stored in the file cache, where previously only GTF-based 
+metadata was supported in _tximeta_ via `linkedTxome()`.
 
 ## Setup
 
 Three replicates from the SGNEx H9 cell line, quantified with oarfish
 against a mixed reference: GENCODE v48 annotated transcripts plus a set
 of novel transcripts.
+
+```{r}
+#| include: false
+library(BiocFileCache)
+bfc <- BiocFileCache()
+res <- bfcquery(bfc, "linkedTxpData")
+if (nrow(res) > 0) {
+  bfcremove(bfc, rids = res$rid)
+}
+```
 
 ```{r}
 #| message: false
@@ -87,7 +113,7 @@ returning an un-ranged `SummarizedExperiment`.
 
 ```{r}
 se <- importData(coldata, type = "oarfish")
-se
+dim(se)
 ```
 
 ## Inspect digests
@@ -108,44 +134,49 @@ has a known match. Here the annotated GENCODE v48 transcripts receive
 with `NA` metadata and `index = "novel"`.
 
 ```{r}
-#| eval: false
 se_updated <- updateMetadata(se)
-mcols(se_updated)
+n <- nrow(se_updated)
+mcols(se_updated)[ c(1:2, (n-1):n), ]
 ```
 
-To also attach genomic ranges (requires downloading the GENCODE v48 GTF):
+To also attach genomic ranges:
 
 ```{r}
 #| eval: false
 se_ranges <- updateMetadata(se, ranges = TRUE)
-se_ranges
+rowRanges(se_ranges)
 ```
 
 ## Supplying novel transcript metadata
 
-Novel transcript ranges can be provided directly via `txpData`, without
-needing to register them persistently.
+Novel transcript metadata can be provided directly via the argument `txpData`, 
+or one can use `linkedTxpData()` to register them persistently, using the file cache. 
+`txpData` can take tabular data or _GRanges_ as input, 
+here we show with ranges:
 
 ```{r}
-library(GenomicRanges)
-
+#| include: false
 novel <- data.frame(
   seqnames = paste0("chr", rep(1:22, each = 500)),
   start    = 1e6 + 1 + 0:499 * 1000,
   end      = 1e6 + 1 + 0:499 * 1000 + 1000 - 1,
   strand   = "+",
   tx_name  = paste0("novel", 1:(22 * 500)),
-  gene_id  = paste0("novel_gene", rep(1:(22 * 10), each = 50)),
-  type     = "protein_coding"
+  gene_id  = paste0("novel_gene", rep(1:(22 * 10), each = 50))
 )
+```
+
+```{r}
+library(GenomicRanges)
+head(novel, 3)
 novel_gr <- as(novel, "GRanges")
 names(novel_gr) <- novel$tx_name
 ```
 
 ```{r}
-#| eval: false
 se_full <- updateMetadata(se, txpData = novel_gr, ranges = TRUE)
-mcols(se_full)
+n <- nrow(se_full)
+rowData(se_full)[ c(1:2, (n-1):n), ]
 table(mcols(se_full)$index)
 ```
 
@@ -176,11 +207,6 @@ quantification output files during the indexing and quantification steps.
 tximeta would then be able to look up that digest in a locally maintained
 registry, recovering full provenance without any manual linking step by
 the user.
-
-### References
-
-::: {#refs}
-:::
 
 ```{=typst}
 ]
