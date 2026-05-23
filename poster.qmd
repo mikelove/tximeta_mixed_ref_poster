@@ -5,12 +5,13 @@ format:
     margin:
       x: 5cm
       y: 5cm
-    mainfont: "Arial"
-    fontsize: 20pt
+    syntax-highlighting: kate
 ---
 
 ```{=typst}
-#set text(font: "Arial", size: 20pt)
+#set text(font: "Arial", size: 24pt)
+
+#set page(numbering: none)
 
 #show heading.where(level: 1): it => block(
   text(font: "Arial", size: 96pt, weight: "bold", it.body),
@@ -35,7 +36,7 @@ format:
 ## Michael I. Love^1^, Charlotte Soneson^2^
 
 ^1^Department of Genetics, UNC-Chapel Hill, Chapel Hill, NC, US \
-^2^Computational Biology Platform, Friedrich Miescher Institute for Biomedical Research, Basel, Switzerland
+^2^Friedrich Miescher Institute for Biomedical Research and SIB Swiss Institute of Bioinformatics, Basel, Switzerland
 
 ---
 
@@ -63,16 +64,14 @@ The long-read quantifier _oarfish_ and _tximeta_ recently
 extend this model to
 *mixed reference* indexing: a single index may combine a set of
 *annotated* transcripts (e.g. from GENCODE or Ensembl) with a set of
-*novel* transcripts (e.g. de novo assembled or fusion sequences not
+*novel* transcripts (e.g. _de novo_ assembled, spike-in, or fusion sequences not
 present in the reference annotation). _tximeta_ v1.28 introduced the 
 following functions:
 
-  - `importData()`
-  - `inspectDigests()`
-  - `updateMetadata()`
+  - `importData()` $\longrightarrow$ `inspectDigests()` $\longrightarrow$ `updateMetadata()`
   - `linkedTxpData()`
 
-These allow the user to check each sub-index digest independently ,
+These allow the user to check each sub-index digest independently,
 add linked metadata, and populate transcript metadata wherever 
 a match is found.
 `linkedTxpData()` allows simple tabular metadata on transcripts 
@@ -105,7 +104,6 @@ if (nrow(res) > 0) {
 #| message: false
 library(tximeta)
 library(SummarizedExperiment)
-
 dir <- system.file("extdata/oarfish", package = "tximportData")
 names <- paste0("rep", 2:4)
 files <- file.path(dir, paste0("sgnex_h9_", names, ".quant.gz"))
@@ -143,17 +141,15 @@ with `NA` metadata and `index = "novel"`.
 se_updated <- updateMetadata(se)
 ```
 
-```{r}
-n <- nrow(se_updated)
-rowData(se_updated)[ c(1:2, (n-1):n), ]
-```
-
 To also attach genomic ranges:
 
 ```{r}
 #| eval: false
 se_ranges <- updateMetadata(se, ranges = TRUE)
-rowRanges(se_ranges)
+```
+
+```{=typst}
+#colbreak()
 ```
 
 ## Supplying novel transcript metadata
@@ -186,9 +182,6 @@ names(novel_gr) <- novel$tx_name
 ```{r}
 #| collapse: true
 se_full <- updateMetadata(se, txpData = novel_gr, ranges = TRUE)
-n <- nrow(se_full)
-rowData(se_full)[ c(1:2, (n-1):n), ]
-table(mcols(se_full)$index)
 ```
 
 ## Persistent metadata via linking
@@ -202,13 +195,8 @@ oarfish output directly.
 #| collapse: true
 makeLinkedTxpData(
   digest = "43158f2c8e88e3acd77c22aee557625a6f1b6a5038cfc7deb5e64903892d8070",
-  digestType = "sha256",
-  indexName = "my_novel_txps",
-  txpData = novel_gr,
-  source = "novel",
-  organism = "Homo sapiens",
-  release = "v1",
-  genome = "GRCh38"
+  digestType = "sha256", indexName = "my_novel_txps", txpData = novel_gr,
+  source = "novel", organism = "Homo sapiens", release = "v1", genome = "GRCh38"
 )
 ```
 
