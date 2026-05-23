@@ -221,7 +221,9 @@ rowData(se_linked)[ c(1:2, (n-1):n), ]
 
 **Backporting to _salmon_.** The mixed-reference digest workflow currently
 targets _oarfish_, which natively records separate digests for each
-sub-index in its metadata JSON. _salmon_ does not yet emit per-sub-index
+sub-index within the _minimap2_ index itself, 
+and in the quantification metadata JSON files (`*.meta_info.json`). 
+_salmon_ does not yet emit per-sub-index
 digests, so the `importData()` / `inspectDigests()` / `updateMetadata()`
 pipeline is not yet available to _salmon_ users who combine annotated and
 novel sequences in a single index. Extending support will require either
@@ -238,8 +240,8 @@ so _tximeta_ cannot identify it automatically.
 One solution is a high-level framework that provides uniform,
 simple interfaces across _salmon_ and _oarfish_. Such a framework could
 manage subsetting of the annotated reference prior to indexing: it would
-compute and store digests of the original and subset FASTA in a standard
-location, then propagate these digests into the tool's index metadata and
+compute and store digests of the original and subset FASTA, and
+propagate these digests into the tool's index metadata and
 quantification output files during the indexing and quantification steps.
 
 ```{=typst}
