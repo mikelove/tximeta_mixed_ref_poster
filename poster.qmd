@@ -3,8 +3,8 @@ format:
   typst:
     papersize: a0
     margin:
-      x: 10cm
-      y: 10cm
+      x: 5cm
+      y: 5cm
     mainfont: "Arial"
     fontsize: 20pt
 ---
@@ -50,10 +50,10 @@ an index built from reference transcript sequences. A key feature of
 these tools is that they record a digest of those sequences at
 index-build time. _tximeta_ reads that digest at import time to automatically
 identify the provenance of the reference. It then attaches the appropriate
-transcript and genome metadata to the resulting `SummarizedExperiment`,
+transcript and genome metadata to the resulting _SummarizedExperiment_,
 in the `rowData` and `rowRanges`.
 This workflow eliminates the need for users to manually track which annotation
-release was used, and to manually reconstruct the matching `TxDb`.
+release was used, and to manually reconstruct the matching _TxDb_.
 This model for attaching data provenance 
 works regardless of the specific steps or actions taken 
 by the initial analyst performing quantification; 
@@ -89,7 +89,13 @@ of novel transcripts.
 #| include: false
 library(BiocFileCache)
 bfc <- BiocFileCache()
+# remove the linked txpData
 res <- bfcquery(bfc, "linkedTxpData")
+if (nrow(res) > 0) {
+  bfcremove(bfc, rids = res$rid)
+}
+# remove the txpData for 43158f
+res <- bfcquery(bfc, "txpdata-43158f")
 if (nrow(res) > 0) {
   bfcremove(bfc, rids = res$rid)
 }
@@ -113,7 +119,6 @@ returning an un-ranged `SummarizedExperiment`.
 
 ```{r}
 se <- importData(coldata, type = "oarfish")
-dim(se)
 ```
 
 ## Inspect digests
@@ -134,9 +139,13 @@ has a known match. Here the annotated GENCODE v48 transcripts receive
 with `NA` metadata and `index = "novel"`.
 
 ```{r}
+#| collapse: true
 se_updated <- updateMetadata(se)
+```
+
+```{r}
 n <- nrow(se_updated)
-mcols(se_updated)[ c(1:2, (n-1):n), ]
+rowData(se_updated)[ c(1:2, (n-1):n), ]
 ```
 
 To also attach genomic ranges:
@@ -167,6 +176,7 @@ novel <- data.frame(
 ```
 
 ```{r}
+#| collapse: true
 library(GenomicRanges)
 head(novel, 3)
 novel_gr <- as(novel, "GRanges")
@@ -174,39 +184,75 @@ names(novel_gr) <- novel$tx_name
 ```
 
 ```{r}
+#| collapse: true
 se_full <- updateMetadata(se, txpData = novel_gr, ranges = TRUE)
 n <- nrow(se_full)
 rowData(se_full)[ c(1:2, (n-1):n), ]
 table(mcols(se_full)$index)
 ```
 
+## Persistent metadata via linking
+
+Rather than supplying `txpData` each time, novel transcript metadata can be
+registered once in the file cache with `makeLinkedTxpData()`. The novel index
+digest is obtained from the `inspectDigests()` output or from the 
+oarfish output directly.
+
+```{r}
+#| collapse: true
+makeLinkedTxpData(
+  digest = "43158f2c8e88e3acd77c22aee557625a6f1b6a5038cfc7deb5e64903892d8070",
+  digestType = "sha256",
+  indexName = "my_novel_txps",
+  txpData = novel_gr,
+  source = "novel",
+  organism = "Homo sapiens",
+  release = "v1",
+  genome = "GRCh38"
+)
+```
+
+After registration, `inspectDigests()` reflects the match, and
+`updateMetadata()` finds and applies the linked metadata.
+
+```{r}
+inspectDigests(se)
+```
+
+```{r}
+#| collapse: true
+se_linked <- updateMetadata(se)
+```
+
+```{r}
+n <- nrow(se_linked)
+rowData(se_linked)[ c(1:2, (n-1):n), ]
+```
+
 ## Next steps
 
-**Backporting to salmon.** The mixed-reference digest workflow currently
-targets oarfish, which natively records separate digests for each
-sub-index in its metadata JSON. Salmon does not yet emit per-sub-index
+**Backporting to _salmon_.** The mixed-reference digest workflow currently
+targets _oarfish_, which natively records separate digests for each
+sub-index in its metadata JSON. _salmon_ does not yet emit per-sub-index
 digests, so the `importData()` / `inspectDigests()` / `updateMetadata()`
-pipeline is not yet available to salmon users who combine annotated and
+pipeline is not yet available to _salmon_ users who combine annotated and
 novel sequences in a single index. Extending support will require either
-a change to salmon's metadata output, or a preprocessing step that
+a change to _salmon_'s metadata output, or a preprocessing step that
 records the sub-index digests separately before indexing.
 
 **Quantification over subsets of the annotated transcript set.** A
 common use case is to quantify against a subset of the annotated
-reference — for example, transcripts on the primary assembly only, or a
-biotype-filtered set. Digest-based provenance breaks down here because
+reference, e.g. transcripts with evidence of expression in a particular
+tissue. Digest-based provenance breaks down here because
 the subset has a different hash from any entry in the pre-computed table,
-so tximeta cannot identify it automatically.
+so _tximeta_ cannot identify it automatically.
 
-A natural solution is a high-level framework that provides uniform,
-simple interfaces across salmon and oarfish. Such a framework could
+One solution is a high-level framework that provides uniform,
+simple interfaces across _salmon_ and _oarfish_. Such a framework could
 manage subsetting of the annotated reference prior to indexing: it would
-compute and store the SHA-256 digest of the subset FASTA in a standard
-location, then propagate that digest into the tool's index metadata and
+compute and store digests of the original and subset FASTA in a standard
+location, then propagate these digests into the tool's index metadata and
 quantification output files during the indexing and quantification steps.
-tximeta would then be able to look up that digest in a locally maintained
-registry, recovering full provenance without any manual linking step by
-the user.
 
 ```{=typst}
 ]
