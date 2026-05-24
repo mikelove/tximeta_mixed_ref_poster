@@ -9,7 +9,7 @@ format:
 ---
 
 ```{=typst}
-#set text(font: "Arial", size: 24pt)
+#set text(font: "Arial", size: 20pt)
 
 #set page(numbering: none)
 
@@ -42,6 +42,11 @@ format:
 
 ```{=typst}
 #columns(2, gutter: 1.5cm)[
+
+#figure(
+  image("tximeta_original.png", width: 100%),
+  caption: [tximeta recognizes reference transcripts by digest.]
+)
 ```
 
 ## Introduction
@@ -150,6 +155,11 @@ se_ranges <- updateMetadata(se, ranges = TRUE)
 
 ```{=typst}
 #colbreak()
+
+#figure(
+  image("mixed_ref_diagram.png", width: 100%),
+  caption: [tximeta support for mixed reference transcripts using annotated and novel digests.]
+)
 ```
 
 ## Supplying novel transcript metadata
