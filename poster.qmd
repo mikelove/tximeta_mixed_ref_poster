@@ -44,7 +44,7 @@ format:
 #columns(2, gutter: 1.5cm)[
 
 #figure(
-  image("mixed_ref_diagram.png", width: 100%),
+  image("mixed_ref_diagram.svg", width: 100%),
   caption: [_tximeta_ new workflow for mixed reference transcripts using annotated and novel digests.]
 )
 ```
