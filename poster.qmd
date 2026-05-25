@@ -9,7 +9,7 @@ format:
 ---
 
 ```{=typst}
-#set text(font: "Arial", size: 20pt)
+#set text(font: "Arial", size: 24pt)
 
 #set page(numbering: none)
 
@@ -44,8 +44,8 @@ format:
 #columns(2, gutter: 1.5cm)[
 
 #figure(
-  image("tximeta_original.png", width: 100%),
-  caption: [tximeta recognizes reference transcripts by digest.]
+  image("mixed_ref_diagram.png", width: 100%),
+  caption: [_tximeta_ new workflow for mixed reference transcripts using annotated and novel digests.]
 )
 ```
 
@@ -58,27 +58,25 @@ index-build time. _tximeta_ reads that digest at import time to automatically
 identify the provenance of the reference. It then attaches the appropriate
 transcript and genome metadata to the resulting _SummarizedExperiment_,
 in the `rowData` and `rowRanges`.
-This workflow eliminates the need for users to manually track which annotation
-release was used, and to manually reconstruct the matching _TxDb_.
-This model for attaching data provenance 
-works regardless of the specific steps or actions taken 
-by the initial analyst performing quantification; 
-no extra steps are required.
+This workflow eliminates the need for users to manually track which 
+annotation release was used, and to manually reconstruct metadata tables.
+It works regardless of the actions of the initial analyst 
+performing quantification.
 
 The long-read quantifier _oarfish_ and _tximeta_ recently 
-extend this model to
+extended this model to
 *mixed reference* indexing: a single index may combine a set of
-*annotated* transcripts (e.g. from GENCODE or Ensembl) with a set of
-*novel* transcripts (e.g. _de novo_ assembled, spike-in, or fusion sequences not
-present in the reference annotation). _tximeta_ v1.28 introduced the 
-following functions:
+`annotated` transcripts (e.g. from GENCODE or Ensembl) with a set of
+`novel` transcripts (e.g. _de novo_ assembled, spike-in, 
+or fusion sequences not present in the reference annotation). 
+_tximeta_ v1.28 introduced the following functions:
 
   - `importData()` $\longrightarrow$ `inspectDigests()` $\longrightarrow$ `updateMetadata()`
-  - `linkedTxpData()`
 
 These allow the user to check each sub-index digest independently,
 add linked metadata, and populate transcript metadata wherever 
 a match is found.
+Another new function, 
 `linkedTxpData()` allows simple tabular metadata on transcripts 
 to be stored in the file cache, where previously only GTF-based 
 metadata was supported in _tximeta_ via `linkedTxome()`.
@@ -106,11 +104,15 @@ if (nrow(res) > 0) {
 ```
 
 ```{r}
+#| include: false
+dir <- system.file("extdata/oarfish", package = "tximportData")
+names <- paste0("rep", 2:4)
+```
+
+```{r}
 #| message: false
 library(tximeta)
 library(SummarizedExperiment)
-dir <- system.file("extdata/oarfish", package = "tximportData")
-names <- paste0("rep", 2:4)
 files <- file.path(dir, paste0("sgnex_h9_", names, ".quant.gz"))
 coldata <- data.frame(files, names)
 ```
@@ -137,29 +139,15 @@ inspectDigests(se)
 ## Update metadata
 
 `updateMetadata()` populates `rowData` for any transcripts whose index
-has a known match. Here the annotated GENCODE v48 transcripts receive
-`tx_name`, `gene_id`, and other columns; the novel transcripts are left
-with `NA` metadata and `index = "novel"`.
+has a known match. To also attach genomic ranges, use `ranges = TRUE`.
 
 ```{r}
 #| collapse: true
 se_updated <- updateMetadata(se)
 ```
 
-To also attach genomic ranges:
-
-```{r}
-#| eval: false
-se_ranges <- updateMetadata(se, ranges = TRUE)
-```
-
 ```{=typst}
 #colbreak()
-
-#figure(
-  image("mixed_ref_diagram.png", width: 100%),
-  caption: [tximeta support for mixed reference transcripts using annotated and novel digests.]
-)
 ```
 
 ## Supplying novel transcript metadata
@@ -209,6 +197,8 @@ makeLinkedTxpData(
   source = "novel", organism = "Homo sapiens", release = "v1", genome = "GRCh38"
 )
 ```
+
+## Digests now recognized
 
 After registration, `inspectDigests()` reflects the match, and
 `updateMetadata()` finds and applies the linked metadata.
