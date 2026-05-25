@@ -244,6 +244,12 @@ compute and store digests of the original and subset FASTA, and
 propagate these digests into the tool's index metadata and
 quantification output files during the indexing and quantification steps.
 
+## Funding
+
+This work is supported in part by an Essential Open Source Software (EOSS) 
+grant from the Wellcome Trust [313919/Z/24/Z], 
+and by the National Institutes of Health grant R01-HG009937.
+
 ```{=typst}
 ]
 ```
