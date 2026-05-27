@@ -33,10 +33,11 @@ format:
 
 # _tximeta_ support for mixed reference sets
 
-## Michael I. Love^1^, Charlotte Soneson^2^
+## Michael I. Love^1^, Charlotte Soneson^2^, Rob Patro^3^
 
 ^1^Department of Genetics, UNC-Chapel Hill, Chapel Hill, NC, US \
-^2^Friedrich Miescher Institute for Biomedical Research and SIB Swiss Institute of Bioinformatics, Basel, Switzerland
+^2^Friedrich Miescher Institute for Biomedical Research and SIB Swiss Institute of Bioinformatics, Basel, Switzerland \
+^3^Department of Computer Science, University of Maryland, College Park, MD, US
 
 ---
 
@@ -69,11 +70,11 @@ extended this model to
 `annotated` transcripts (e.g. from GENCODE or Ensembl) with a set of
 `novel` transcripts (e.g. _de novo_ assembled, spike-in, 
 or fusion sequences not present in the reference annotation). 
-_tximeta_ v1.28 introduced the following functions:
 
-  - `importData()` $\longrightarrow$ `inspectDigests()` $\longrightarrow$ `updateMetadata()`
-
-These allow the user to check each sub-index digest independently,
+_tximeta_ v1.28 (Bioc 3.22, October 2024) introduced the following functions,
+`importData()` $\longrightarrow$ `inspectDigests()` $\longrightarrow$ 
+`updateMetadata()`, 
+allowing the user to check each sub-index digest independently,
 add linked metadata, and populate transcript metadata wherever 
 a match is found.
 Another new function, 
@@ -155,7 +156,7 @@ se_updated <- updateMetadata(se)
 Novel transcript metadata can be provided directly via the argument `txpData`, 
 or one can use `linkedTxpData()` to register them persistently, using the file cache. 
 `txpData` can take tabular data or _GRanges_ as input, 
-here we show with ranges:
+here we show with ranges.
 
 ```{r}
 #| include: false
@@ -237,13 +238,24 @@ workflow rule may be a solution.
 ## Other updates
 
 **New importer support for _edgeR_ and _limma_**. 
-New function _edgeR::DGEListFromTximeta_ assists with downstream
+New function `edgeR::DGEListFromTximeta()` assists with downstream
 analyses with other Bioconductor packages, including dividing 
 out count uncertainty for isoform-level anlaysis. 
 See _tximeta_ vingette.
 
 **New argument for GENCODE.** `gencode_gtf_prefix` allows specifying
 the desired GTF from GENCODE, e.g. `"chr_patch_hapl_scaff"`.
+
+**Ranges after summarization.** 
+`summarizeToGene()` argument `assignRanges` takes either 
+`“range”` (default) or `“abundant”`, for determining the ranges that are attached to the SE. 
+Default `"range"` provides the range of all exons of the gene.
+`“abundant”` instead returns the range of the most abundant 
+isoform in the data. See `?summarizedToGene`.
+
+## Feedback
+
+Please provide feedback via: <https://github.com/thelovelab/tximeta/issues>
 
 ## Funding
 
