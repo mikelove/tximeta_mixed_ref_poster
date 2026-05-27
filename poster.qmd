@@ -5,7 +5,7 @@ format:
     margin:
       x: 5cm
       y: 5cm
-    syntax-highlighting: kate
+    syntax-highlighting: tango
 ---
 
 ```{=typst}
@@ -172,9 +172,8 @@ novel <- data.frame(
 ```{r}
 #| collapse: true
 library(GenomicRanges)
-head(novel, 3)
-novel_gr <- as(novel, "GRanges")
-names(novel_gr) <- novel$tx_name
+head(novel, 2)
+novel_gr <- as(novel, "GRanges"); names(novel_gr) <- novel$tx_name
 ```
 
 ```{r}
@@ -185,8 +184,8 @@ se_full <- updateMetadata(se, txpData = novel_gr, ranges = TRUE)
 ## Persistent metadata via linking
 
 Rather than supplying `txpData` each time, novel transcript metadata can be
-registered once in the file cache with `makeLinkedTxpData()`. The novel index
-digest is obtained from the `inspectDigests()` output or from the 
+registered once in the file cache with `makeLinkedTxome` or `makeLinkedTxpData()`. 
+The novel index digest is obtained from the `inspectDigests()` output or from the 
 oarfish output directly.
 
 ```{r}
@@ -200,49 +199,51 @@ makeLinkedTxpData(
 
 ## Digests now recognized
 
-After registration, `inspectDigests()` reflects the match, and
-`updateMetadata()` finds and applies the linked metadata.
+After registration, `inspectDigests()` reflects the match.
 
 ```{r}
 inspectDigests(se)
 ```
+
+`updateMetadata()` finds and applies the linked metadata.
 
 ```{r}
 #| collapse: true
 se_linked <- updateMetadata(se)
 ```
 
-```{r}
-n <- nrow(se_linked)
-rowData(se_linked)[ c(1:2, (n-1):n), ]
-```
-
 ## Next steps
 
-**Backporting to _salmon_.** The mixed-reference digest workflow currently
+**Backporting to _salmon_.** The mixed reference workflow currently
 targets _oarfish_, which natively records separate digests for each
 sub-index within the _minimap2_ index itself, 
 and in the quantification metadata JSON files (`*.meta_info.json`). 
-_salmon_ does not yet emit per-sub-index
-digests, so the `importData()` / `inspectDigests()` / `updateMetadata()`
-pipeline is not yet available to _salmon_ users who combine annotated and
-novel sequences in a single index. Extending support will require either
-a change to _salmon_'s metadata output, or a preprocessing step that
-records the sub-index digests separately before indexing.
+_salmon_ does not record per sub-index
+digests, so the new import model 
+is not yet available to _salmon_ users who combine reference transcripts. 
+Extending support will require either a change to _salmon_'s metadata output, 
+or a preprocessing step handle by a wrapper tool, or workflow rule, 
+that records the sub-index digests into a standardized location
+alongside indexing.
 
 **Quantification over subsets of the annotated transcript set.** A
 common use case is to quantify against a subset of the annotated
-reference, e.g. transcripts with evidence of expression in a particular
-tissue. Digest-based provenance breaks down here because
+reference, e.g. a tissue- or cell-type-specific transcriptome.
+Digest-based provenance breaks down here because
 the subset has a different hash from any entry in the pre-computed table,
-so _tximeta_ cannot identify it automatically.
+so _tximeta_ cannot identify it automatically. Again, a wrapper tool or 
+workflow rule may be a solution.
 
-One solution is a high-level framework that provides uniform,
-simple interfaces across _salmon_ and _oarfish_. Such a framework could
-manage subsetting of the annotated reference prior to indexing: it would
-compute and store digests of the original and subset FASTA, and
-propagate these digests into the tool's index metadata and
-quantification output files during the indexing and quantification steps.
+## Other updates
+
+**New importer support for _edgeR_ and _limma_**. 
+New function _edgeR::DGEListFromTximeta_ assists with downstream
+analyses with other Bioconductor packages, including dividing 
+out count uncertainty for isoform-level anlaysis. 
+See _tximeta_ vingette.
+
+**New argument for GENCODE.** `gencode_gtf_prefix` allows specifying
+the desired GTF from GENCODE, e.g. `"chr_patch_hapl_scaff"`.
 
 ## Funding
 
