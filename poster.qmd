@@ -71,7 +71,7 @@ extended this model to
 `novel` transcripts (e.g. _de novo_ assembled, spike-in, 
 or fusion sequences not present in the reference annotation). 
 
-_tximeta_ v1.28 (Bioc 3.22, October 2024) introduced the following functions,
+_tximeta_ v1.28 (Bioc 3.22, October 2025) introduced the following functions,
 `importData()` $\longrightarrow$ `inspectDigests()` $\longrightarrow$ 
 `updateMetadata()`, 
 allowing the user to check each sub-index digest independently,
